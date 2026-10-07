@@ -103,6 +103,47 @@
                 </form>
             </section>
 
+            <!-- Gestão de Motoristas (Frota) -->
+            <section class="bg-white p-6 rounded-lg shadow-md mb-8">
+                <h2 class="text-xl font-semibold mb-4 text-orange-600">🛵 Cadastrar Novo Motorista</h2>
+                <form id="form-motorista" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Nome do Motorista</label>
+                        <input type="text" id="moto-nome" required placeholder="Ex: Carlos Silva" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Telefone / WhatsApp</label>
+                        <input type="text" id="moto-telefone" placeholder="Ex: 83988887777" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Veículo</label>
+                        <input type="text" id="moto-veiculo" placeholder="Ex: Moto Honda CG 160" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm">
+                    </div>
+                    <div class="md:col-span-3 flex justify-end">
+                        <button type="submit" class="bg-orange-600 text-white px-4 py-2 rounded-md hover:bg-orange-700 transition font-medium">
+                            Cadastrar Motorista
+                        </button>
+                    </div>
+                </form>
+
+                <div class="mt-6">
+                    <h3 class="text-md font-semibold text-gray-700 mb-2">Motoristas Ativos da Frota</h3>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead>
+                                <tr>
+                                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Nome</th>
+                                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Telefone</th>
+                                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Veículo</th>
+                                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabela-motoristas" class="bg-white divide-y divide-gray-200 text-sm"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
             <!-- Lançamento de Pedidos -->
             <section class="bg-white p-6 rounded-lg shadow-md mb-8">
                 <h2 class="text-xl font-semibold mb-4 text-green-700">📦 Lançar Novo Pedido / Entrega</h2>
@@ -114,16 +155,22 @@
                         </select>
                     </div>
                     <div>
+                        <label class="block text-sm font-medium text-gray-700">Atribuir a Motorista</label>
+                        <select id="select-motorista" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm">
+                            <option value="">Nenhum / Atribuição livre</option>
+                        </select>
+                    </div>
+                    <div>
                         <label class="block text-sm font-medium text-gray-700">Data da Entrega</label>
                         <input type="date" id="data-entrega" required class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm">
-                    </div>
-                    <div class="md:col-span-2">
-                        <label class="block text-sm font-medium text-gray-700">Descrição do Pedido</label>
-                        <input type="text" id="descricao-pedido" required placeholder="Ex: 2x Caixas de Produtos" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm">
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700">Valor (R$)</label>
                         <input type="number" step="0.01" id="valor-pedido" required class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm">
+                    </div>
+                    <div class="md:col-span-2">
+                        <label class="block text-sm font-medium text-gray-700">Descrição do Pedido</label>
+                        <input type="text" id="descricao-pedido" required placeholder="Ex: 2x Caixas de Produtos" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm">
                     </div>
                     <div class="md:col-span-2 flex justify-end">
                         <button type="submit" class="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 transition font-medium">Lançar Pedido</button>
@@ -147,6 +194,7 @@
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Cliente</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Endereço</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Pedido</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Motorista</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Valor</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Data</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
@@ -257,6 +305,7 @@
         </div>
     </div>
 
+    <!-- Scripts obrigatórios do Supabase e app.js -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="app.js"></script>
 </body>
