@@ -140,7 +140,6 @@ window.mudarAba = function(aba) {
 
 async function carregarClientes() {
     try {
-        // O RLS do Supabase já filtra por empresa, mas garantimos o empresa_id se necessário
         const { data, error } = await supabaseClient
             .from('clientes')
             .select('*')

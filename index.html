@@ -4,14 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Micro-SaaS: CRM, Rotas & BI</title>
-    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Chart.js para Gráficos -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body class="bg-gray-100 text-gray-900">
 
-    <!-- ================= TELA DE LOGIN ================= -->
+    <!-- TELA DE LOGIN -->
     <div id="tela-login" class="min-h-screen flex items-center justify-center p-4">
         <div class="bg-white p-8 rounded-lg shadow-lg max-w-md w-full">
             <h1 class="text-2xl font-bold text-blue-600 mb-2 text-center">🔐 Acesso ao Sistema</h1>
@@ -20,21 +18,25 @@
             <form id="form-login" class="space-y-4">
                 <div>
                     <label class="block text-sm font-medium text-gray-700">E-mail</label>
-                    <input type="email5" id="login-email" required placeholder="seu@email.com" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm">
+                    <input type="email" id="login-email" required placeholder="seu@email.com" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm outline-none">
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700">Senha</label>
-                    <input type="password" id="login-senha" required placeholder="••••••••" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm">
+                    <input type="password" id="login-senha" required placeholder="••••••••" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm outline-none">
                 </div>
                 <button type="submit" class="w-full bg-blue-600 text-white p-2 rounded-md font-semibold hover:bg-blue-700 transition">
                     Entrar no Sistema
                 </button>
             </form>
             <p id="erro-login" class="text-sm text-red-600 mt-4 text-center font-medium"></p>
+
+            <div class="mt-6 text-center text-sm text-gray-600 border-t pt-4">
+                A sua empresa ainda não tem conta? <a href="cadastro.html" class="text-blue-600 font-semibold hover:underline">Registar Empresa</a>
+            </div>
         </div>
     </div>
 
-    <!-- ================= APLICAÇÃO PRINCIPAL (OCULTADA ATÉ O LOGIN) ================= -->
+    <!-- APLICAÇÃO PRINCIPAL -->
     <div id="app-principal" class="max-w-6xl mx-auto p-6 hidden">
         <header class="mb-6 flex flex-col md:flex-row justify-between items-center border-b pb-4 gap-4">
             <div>
@@ -46,22 +48,14 @@
             </button>
         </header>
 
-        <!-- Navegação por Abas -->
         <div id="menu-abas" class="flex flex-wrap justify-center mb-8 gap-3">
-            <button id="btn-aba-gestor" onclick="mudarAba('gestor')" class="bg-blue-600 text-white px-5 py-2 rounded-lg font-semibold shadow transition">
-                📊 Painel do Gestor
-            </button>
-            <button id="btn-aba-entregador" onclick="mudarAba('entregador')" class="bg-gray-200 text-gray-700 px-5 py-2 rounded-lg font-semibold shadow transition hover:bg-gray-300">
-                🛵 Modo Entregador (Rua)
-            </button>
-            <button id="btn-aba-relatorios" onclick="mudarAba('relatorios')" class="bg-gray-200 text-gray-700 px-5 py-2 rounded-lg font-semibold shadow transition hover:bg-gray-300">
-                📈 Relatórios & BI
-            </button>
+            <button id="btn-aba-gestor" onclick="mudarAba('gestor')" class="bg-blue-600 text-white px-5 py-2 rounded-lg font-semibold shadow transition">📊 Painel do Gestor</button>
+            <button id="btn-aba-entregador" onclick="mudarAba('entregador')" class="bg-gray-200 text-gray-700 px-5 py-2 rounded-lg font-semibold shadow transition hover:bg-gray-300">🛵 Modo Entregador (Rua)</button>
+            <button id="btn-aba-relatorios" onclick="mudarAba('relatorios')" class="bg-gray-200 text-gray-700 px-5 py-2 rounded-lg font-semibold shadow transition hover:bg-gray-300">📈 Relatórios & BI</button>
         </div>
 
-        <!-- ================= ABA 1: GESTOR ================= -->
+        <!-- ABA GESTOR -->
         <div id="aba-gestor">
-            <!-- Dashboard Rápido -->
             <section class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
                 <div class="bg-white p-4 rounded-lg shadow-md border-l-4 border-blue-500">
                     <p class="text-xs text-gray-500 uppercase font-semibold">Total de Entregas</p>
@@ -81,7 +75,7 @@
                 </div>
             </section>
 
-            <!-- Cadastro de Clientes (CRM) -->
+            <!-- CRM Clientes -->
             <section class="bg-white p-6 rounded-lg shadow-md mb-8">
                 <h2 id="titulo-form-cliente" class="text-xl font-semibold mb-4 text-blue-700">👥 Cadastrar Novo Cliente</h2>
                 <form id="form-cliente" class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -103,12 +97,8 @@
                         <input type="text" id="bairro" required class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm">
                     </div>
                     <div class="md:col-span-2 flex justify-end gap-2">
-                        <button type="button" id="btn-cancelar-edicao" onclick="cancelarEdicaoCliente()" class="bg-gray-400 text-white px-4 py-2 rounded-md hover:bg-gray-500 transition font-medium hidden">
-                            Cancelar
-                        </button>
-                        <button type="submit" id="btn-salvar-cliente" class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition font-medium">
-                            Salvar Cliente
-                        </button>
+                        <button type="button" id="btn-cancelar-edicao" onclick="cancelarEdicaoCliente()" class="bg-gray-400 text-white px-4 py-2 rounded-md hover:bg-gray-500 transition font-medium hidden">Cancelar</button>
+                        <button type="submit" id="btn-salvar-cliente" class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition font-medium">Salvar Cliente</button>
                     </div>
                 </form>
             </section>
@@ -136,14 +126,12 @@
                         <input type="number" step="0.01" id="valor-pedido" required class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm">
                     </div>
                     <div class="md:col-span-2 flex justify-end">
-                        <button type="submit" class="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 transition font-medium">
-                            Lançar Pedido
-                        </button>
+                        <button type="submit" class="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 transition font-medium">Lançar Pedido</button>
                     </div>
                 </form>
             </section>
 
-            <!-- Painel de Rotas Completo -->
+            <!-- Tabela de Pedidos -->
             <section class="bg-white p-6 rounded-lg shadow-md mb-8">
                 <div class="flex flex-col md:flex-row justify-between items-center mb-4 gap-4">
                     <h2 class="text-xl font-semibold text-green-700">📋 Painel de Rotas e Entregas</h2>
@@ -152,7 +140,6 @@
                         <input type="text" id="input-busca" placeholder="🔍 Buscar cliente ou pedido..." class="p-2 border border-gray-300 rounded-md text-sm w-full md:w-64">
                     </div>
                 </div>
-
                 <div class="overflow-x-auto">
                     <table class="min-w-full divide-y divide-gray-200">
                         <thead>
@@ -171,7 +158,7 @@
                 </div>
             </section>
 
-            <!-- Clientes Cadastrados com Edição/Exclusão -->
+            <!-- Tabela Clientes Cadastrados -->
             <section class="bg-white p-6 rounded-lg shadow-md">
                 <h2 class="text-xl font-semibold mb-4 text-blue-700">📋 Clientes Cadastrados (CRM)</h2>
                 <div class="overflow-x-auto">
@@ -191,7 +178,7 @@
             </section>
         </div>
 
-        <!-- ================= ABA 2: ENTREGADOR (MODO RUA) ================= -->
+        <!-- ABA ENTREGADOR -->
         <div id="aba-entregador" class="hidden">
             <div class="bg-white p-6 rounded-lg shadow-md mb-6">
                 <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
@@ -204,12 +191,11 @@
                         <input type="date" id="filtro-data-entregador" class="p-2 border border-gray-300 rounded-md text-sm mt-1">
                     </div>
                 </div>
-
                 <div id="lista-entregador" class="grid grid-cols-1 gap-4"></div>
             </div>
         </div>
 
-        <!-- ================= ABA 3: RELATÓRIOS & BI ================= -->
+        <!-- ABA RELATÓRIOS & BI -->
         <div id="aba-relatorios" class="hidden">
             <div class="bg-white p-6 rounded-lg shadow-md mb-6">
                 <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
@@ -222,13 +208,10 @@
                             <label class="block text-xs font-medium text-gray-600">Mês de Referência:</label>
                             <input type="month" id="filtro-mes-relatorio" class="p-2 border border-gray-300 rounded-md text-sm mt-1">
                         </div>
-                        <button onclick="exportarParaCSV()" class="bg-emerald-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-emerald-700 transition self-end">
-                            📥 Exportar CSV / Excel
-                        </button>
+                        <button onclick="exportarParaCSV()" class="bg-emerald-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-emerald-700 transition self-end">📥 Exportar CSV / Excel</button>
                     </div>
                 </div>
 
-                <!-- Cards de Indicadores do Mês -->
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
                     <div class="bg-purple-50 p-4 rounded-lg border border-purple-200">
                         <p class="text-xs text-purple-600 uppercase font-semibold">Faturamento do Mês</p>
@@ -244,23 +227,17 @@
                     </div>
                 </div>
 
-                <!-- Gráficos Visuais -->
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
                     <div class="bg-gray-50 p-4 rounded-lg border">
                         <h3 class="text-md font-semibold text-gray-700 mb-3 text-center">Status das Entregas do Mês</h3>
-                        <div class="relative h-64 flex justify-center">
-                            <canvas id="graficoStatus"></canvas>
-                        </div>
+                        <div class="relative h-64 flex justify-center"><canvas id="graficoStatus"></canvas></div>
                     </div>
                     <div class="bg-gray-50 p-4 rounded-lg border">
                         <h3 class="text-md font-semibold text-gray-700 mb-3 text-center">Faturamento por Dia</h3>
-                        <div class="relative h-64 flex justify-center">
-                            <canvas id="graficoFaturamento"></canvas>
-                        </div>
+                        <div class="relative h-64 flex justify-center"><canvas id="graficoFaturamento"></canvas></div>
                     </div>
                 </div>
 
-                <!-- Métricas por Bairro (Logística Avançada) -->
                 <div class="bg-gray-50 p-4 rounded-lg border">
                     <h3 class="text-md font-semibold text-gray-700 mb-3">📍 Concentração de Entregas por Bairro (Mês)</h3>
                     <div class="overflow-x-auto">
@@ -276,13 +253,10 @@
                         </table>
                     </div>
                 </div>
-
             </div>
         </div>
-
     </div>
 
-    <!-- Supabase CDN e Script Principal -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="app.js"></script>
 </body>
