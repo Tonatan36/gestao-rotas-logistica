@@ -25,14 +25,15 @@ const filtroMesRelatorio = document.getElementById('filtro-mes-relatorio');
 let todosPedidos = [];
 let todosClientes = [];
 let usuarioLogado = null;
+let perfilUsuario = null; // Guarda os dados da tabela 'perfis' (incluindo empresa_id e cargo)
 let chartStatusInstance = null;
 let chartFaturamentoInstance = null;
 
 const hojeISO = new Date().toISOString().split('T')[0];
 const mesAtualISO = hojeISO.substring(0, 7);
-filtroData.value = '';
-filtroDataEntregador.value = hojeISO;
-filtroMesRelatorio.value = mesAtualISO;
+if (filtroData) filtroData.value = '';
+if (filtroDataEntregador) filtroDataEntregador.value = hojeISO;
+if (filtroMesRelatorio) filtroMesRelatorio.value = mesAtualISO;
 
 // ================= AUTENTICAÇÃO & CONTROLE DE PERFIS =================
 
@@ -51,26 +52,39 @@ formLogin.addEventListener('submit', async (e) => {
         if (error) throw error;
 
         usuarioLogado = data.user;
-        verificarSessao();
+        await carregarPerfilEVerificarSessao();
     } catch (err) {
         erroLogin.textContent = "❌ Erro ao entrar: " + err.message;
     }
 });
 
-async function verificarSessao() {
+async function carregarPerfilEVerificarSessao() {
     const { data: { session } } = await supabaseClient.auth.getSession();
 
     if (session) {
         usuarioLogado = session.user;
+
+        // Busca o perfil na tabela 'perfis' para descobrir a empresa_id e o cargo exato
+        const { data: perfil, error: erroPerfil } = await supabaseClient
+            .from('perfis')
+            .select('*, empresas(nome_empresa, plano)')
+            .eq('id', usuarioLogado.id)
+            .single();
+
+        if (erroPerfil || !perfil) {
+            erroLogin.textContent = "❌ Erro: Perfil de utilizador não encontrado na base de dados.";
+            await supabaseClient.auth.signOut();
+            return;
+        }
+
+        perfilUsuario = perfil;
         telaLogin.classList.add('hidden');
         appPrincipal.classList.remove('hidden');
         
-        infoUsuario.textContent = `Logado como: ${usuarioLogado.email}`;
+        const nomeEmpresa = perfil.empresas ? perfil.empresas.nome_empresa : 'Empresa';
+        infoUsuario.textContent = `Empresa: ${nomeEmpresa} | Logado como: ${perfil.nome} (${perfil.cargo})`;
 
-        // Identifica se é entregador pelo e-mail ou regra
-        const isEntregador = usuarioLogado.email.toLowerCase().includes('entregador');
-
-        if (isEntregador) {
+        if (perfil.cargo === 'motorista') {
             // Oculta abas de gestor e relatórios, força o modo entregador
             document.getElementById('menu-abas').classList.add('hidden');
             mudarAba('entregador');
@@ -100,33 +114,38 @@ window.mudarAba = function(aba) {
     const divEntregador = document.getElementById('aba-entregador');
     const divRelatorios = document.getElementById('aba-relatorios');
 
-    btnGestor.className = "bg-gray-200 text-gray-700 px-5 py-2 rounded-lg font-semibold shadow transition hover:bg-gray-300";
-    btnEntregador.className = "bg-gray-200 text-gray-700 px-5 py-2 rounded-lg font-semibold shadow transition hover:bg-gray-300";
-    btnRelatorios.className = "bg-gray-200 text-gray-700 px-5 py-2 rounded-lg font-semibold shadow transition hover:bg-gray-300";
+    if (btnGestor) btnGestor.className = "bg-gray-200 text-gray-700 px-5 py-2 rounded-lg font-semibold shadow transition hover:bg-gray-300";
+    if (btnEntregador) btnEntregador.className = "bg-gray-200 text-gray-700 px-5 py-2 rounded-lg font-semibold shadow transition hover:bg-gray-300";
+    if (btnRelatorios) btnRelatorios.className = "bg-gray-200 text-gray-700 px-5 py-2 rounded-lg font-semibold shadow transition hover:bg-gray-300";
 
-    divGestor.classList.add('hidden');
-    divEntregador.classList.add('hidden');
-    divRelatorios.classList.add('hidden');
+    if (divGestor) divGestor.classList.add('hidden');
+    if (divEntregador) divEntregador.classList.add('hidden');
+    if (divRelatorios) divRelatorios.classList.add('hidden');
 
-    if (aba === 'gestor') {
+    if (aba === 'gestor' && divGestor) {
         divGestor.classList.remove('hidden');
-        btnGestor.className = "bg-blue-600 text-white px-5 py-2 rounded-lg font-semibold shadow transition";
-    } else if (aba === 'entregador') {
+        if (btnGestor) btnGestor.className = "bg-blue-600 text-white px-5 py-2 rounded-lg font-semibold shadow transition";
+    } else if (aba === 'entregador' && divEntregador) {
         divEntregador.classList.remove('hidden');
-        btnEntregador.className = "bg-orange-600 text-white px-5 py-2 rounded-lg font-semibold shadow transition";
+        if (btnEntregador) btnEntregador.className = "bg-orange-600 text-white px-5 py-2 rounded-lg font-semibold shadow transition";
         renderizarPainelEntregador(todosPedidos);
-    } else if (aba === 'relatorios') {
+    } else if (aba === 'relatorios' && divRelatorios) {
         divRelatorios.classList.remove('hidden');
-        btnRelatorios.className = "bg-purple-600 text-white px-5 py-2 rounded-lg font-semibold shadow transition";
+        if (btnRelatorios) btnRelatorios.className = "bg-purple-600 text-white px-5 py-2 rounded-lg font-semibold shadow transition";
         atualizarRelatoriosBI(todosPedidos);
     }
 };
 
-// ================= CRM: CLIENTES (COM EDIÇÃO E EXCLUSÃO) =================
+// ================= CRM: CLIENTES (COM FILTRO DE EMPRESA) =================
 
 async function carregarClientes() {
     try {
-        const { data, error } = await supabaseClient.from('clientes').select('*').order('id', { ascending: false });
+        // O RLS do Supabase já filtra por empresa, mas garantimos o empresa_id se necessário
+        const { data, error } = await supabaseClient
+            .from('clientes')
+            .select('*')
+            .order('id', { ascending: false });
+
         if (error) throw error;
 
         todosClientes = data || [];
@@ -154,7 +173,7 @@ async function carregarClientes() {
 
             const option = document.createElement('option');
             option.value = cliente.id;
-            option.textContent = `${cliente.nome} (${cliente.endereco} - ${cliente.bairro})`;
+            option.textContent = `${cliente.nome} (${cliente.endereco} - ${cliente.bairro || ''})`;
             selectCliente.appendChild(option);
         });
     } catch (err) {
@@ -165,22 +184,22 @@ async function carregarClientes() {
 formCliente.addEventListener('submit', async (e) => {
     e.preventDefault();
     const idEditando = document.getElementById('cliente-id-editando').value;
+    
     const dadosCliente = {
         nome: document.getElementById('nome').value,
         telefone: document.getElementById('telefone').value,
         endereco: document.getElementById('endereco').value,
-        bairro: document.getElementById('bairro').value
+        bairro: document.getElementById('bairro').value,
+        empresa_id: perfilUsuario.empresa_id // <--- Atrela o cliente à empresa logada
     };
 
     try {
         if (idEditando) {
-            // Atualizar
             const { error } = await supabaseClient.from('clientes').update(dadosCliente).eq('id', idEditando);
             if (error) throw error;
             alert('Cliente atualizado com sucesso!');
             cancelarEdicaoCliente();
         } else {
-            // Inserir
             const { error } = await supabaseClient.from('clientes').insert([dadosCliente]);
             if (error) throw error;
             formCliente.reset();
@@ -245,7 +264,8 @@ async function carregarPedidos() {
         renderizarTabelaPedidos(todosPedidos);
         renderizarPainelEntregador(todosPedidos);
 
-        if (!document.getElementById('aba-relatorios').classList.contains('hidden')) {
+        const abaRelatorios = document.getElementById('aba-relatorios');
+        if (abaRelatorios && !abaRelatorios.classList.contains('hidden')) {
             atualizarRelatoriosBI(todosPedidos);
         }
     } catch (err) {
@@ -303,6 +323,7 @@ function renderizarTabelaPedidos(pedidos) {
 }
 
 function renderizarPainelEntregador(pedidos) {
+    if (!listaEntregador) return;
     listaEntregador.innerHTML = '';
     const dataSelecionada = filtroDataEntregador.value;
     const pedidosRua = pedidos.filter(p => dataSelecionada ? p.data_entrega === dataSelecionada : true);
@@ -468,10 +489,10 @@ function atualizarDashboard(pedidos) {
 }
 
 // Eventos
-filtroData.addEventListener('change', () => renderizarTabelaPedidos(todosPedidos));
-inputBusca.addEventListener('input', () => renderizarTabelaPedidos(todosPedidos));
-filtroDataEntregador.addEventListener('change', () => renderizarPainelEntregador(todosPedidos));
-filtroMesRelatorio.addEventListener('change', () => atualizarRelatoriosBI(todosPedidos));
+if (filtroData) filtroData.addEventListener('change', () => renderizarTabelaPedidos(todosPedidos));
+if (inputBusca) inputBusca.addEventListener('input', () => renderizarTabelaPedidos(todosPedidos));
+if (filtroDataEntregador) filtroDataEntregador.addEventListener('change', () => renderizarPainelEntregador(todosPedidos));
+if (filtroMesRelatorio) filtroMesRelatorio.addEventListener('change', () => atualizarRelatoriosBI(todosPedidos));
 
 if (formPedido) {
     formPedido.addEventListener('submit', async (e) => {
@@ -481,7 +502,8 @@ if (formPedido) {
             data_entrega: document.getElementById('data-entrega').value,
             descricao_pedido: document.getElementById('descricao-pedido').value,
             valor: document.getElementById('valor-pedido').value,
-            status: 'Pendente'
+            status: 'Pendente',
+            empresa_id: perfilUsuario.empresa_id // <--- Atrela o pedido à empresa logada
         };
         try {
             await supabaseClient.from('pedidos').insert([novoPedido]);
@@ -493,4 +515,4 @@ if (formPedido) {
 }
 
 // Inicialização: Verifica se já tem sessão ativa no Supabase
-verificarSessao();
+carregarPerfilEVerificarSessao();
