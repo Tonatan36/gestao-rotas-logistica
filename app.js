@@ -292,7 +292,7 @@ async function carregarPedidos() {
     try {
         const { data, error } = await supabaseClient
             .from('pedidos')
-            .select(`*, clientes (nome, endereco, telefone, bairro), motoristas (nome, veiculo)`)
+            .select(`*, clientes (nome, endereco, telefone, bairro), motoristas (id, nome, veiculo)`)
             .order('id', { ascending: false });
 
         if (error) throw error;
@@ -330,22 +330,45 @@ function renderizarTabelaPedidos(pedidos) {
     pedidosFiltrados.forEach(p => {
         const nomeCliente = p.clientes ? p.clientes.nome : 'Não encontrado';
         const enderecoCliente = p.clientes ? p.clientes.endereco : '-';
-        const nomeMotorista = p.motoristas ? p.motoristas.nome : 'Não atribuído';
-        const isEntregue = p.status === 'Entregue';
+        const motoristaAtualId = p.motorista_id || '';
+
+        // Seletor rápido de motorista diretamente na tabela
+        let optionsMotoristas = `<option value="">(Livre / Sem Atribuição)</option>`;
+        todosMotoristas.forEach(m => {
+            const selected = m.id == motoristaAtualId ? 'selected' : '';
+            optionsMotoristas += `<option value="${m.id}" ${selected}>${m.nome}</option>`;
+        });
+
+        // Cores e rótulos de status avançados
+        let statusBadge = '';
+        if (p.status === 'Pendente') statusBadge = 'bg-yellow-100 text-yellow-800';
+        else if (p.status === 'Em Separação') statusBadge = 'bg-blue-100 text-blue-800';
+        else if (p.status === 'Em Rota') statusBadge = 'bg-purple-100 text-purple-800';
+        else if (p.status === 'Entregue') statusBadge = 'bg-green-100 text-green-800';
+        else statusBadge = 'bg-red-100 text-red-800';
 
         const linha = document.createElement('tr');
         linha.innerHTML = `
             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${nomeCliente}</td>
             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${enderecoCliente}</td>
             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${p.descricao_pedido}</td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-orange-600 font-medium">${nomeMotorista}</td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm">
+                <select onchange="atribuirMotoristaDireto(${p.id}, this.value)" class="p-1 border border-gray-300 rounded text-xs bg-gray-50 text-orange-700 font-medium">
+                    ${optionsMotoristas}
+                </select>
+            </td>
             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">R$ ${Number(p.valor).toFixed(2)}</td>
             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${p.data_entrega}</td>
             <td class="px-6 py-4 whitespace-nowrap text-sm">
-                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${isEntregue ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}">${p.status}</span>
+                <select onchange="atualizarStatusPedido(${p.id}, this.value)" class="px-2 py-1 text-xs font-semibold rounded-full ${statusBadge} border border-gray-200 cursor-pointer">
+                    <option value="Pendente" ${p.status === 'Pendente' ? 'selected' : ''}>Pendente</option>
+                    <option value="Em Separação" ${p.status === 'Em Separação' ? 'selected' : ''}>Em Separação</option>
+                    <option value="Em Rota" ${p.status === 'Em Rota' ? 'selected' : ''}>Em Rota</option>
+                    <option value="Entregue" ${p.status === 'Entregue' ? 'selected' : ''}>Entregue</option>
+                    <option value="Cancelado" ${p.status === 'Cancelado' ? 'selected' : ''}>Cancelado</option>
+                </select>
             </td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium flex gap-2">
-                ${!isEntregue ? `<button onclick="marcarComoEntregue(${p.id})" class="bg-green-600 text-white px-3 py-1 rounded text-xs hover:bg-green-700">Entregar</button>` : `<span class="text-gray-400 text-xs">Concluído</span>`}
+            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                 <button onclick="excluirPedido(${p.id})" class="bg-red-500 text-white px-2 py-1 rounded text-xs hover:bg-red-600">🗑️</button>
             </td>
         `;
@@ -353,15 +376,40 @@ function renderizarTabelaPedidos(pedidos) {
     });
 }
 
+window.atribuirMotoristaDireto = async function(pedidoId, motoristaId) {
+    try {
+        const novoId = motoristaId ? motoristaId : null;
+        await supabaseClient.from('pedidos').update({ motorista_id: novoId }).eq('id', pedidoId);
+        carregarPedidos();
+    } catch (err) { alert('Erro ao atribuir motorista: ' + err.message); }
+};
+
+window.atualizarStatusPedido = async function(pedidoId, novoStatus) {
+    try {
+        await supabaseClient.from('pedidos').update({ status: novoStatus }).eq('id', pedidoId);
+        carregarPedidos();
+    } catch (err) { alert('Erro ao atualizar status: ' + err.message); }
+};
+
 function renderizarPainelEntregador(pedidos) {
     if (!listaEntregador) return;
     listaEntregador.innerHTML = '';
     const dataSelecionada = filtroDataEntregador.value;
     
-    const pedidosRua = pedidos.filter(p => dataSelecionada ? p.data_entrega === dataSelecionada : true);
+    let pedidosRua = pedidos.filter(p => dataSelecionada ? p.data_entrega === dataSelecionada : true);
+
+    // Se o usuário logado for um motorista, filtra apenas os pedidos dele
+    if (perfilUsuario && perfilUsuario.cargo === 'motorista') {
+        const motoristaEncontrado = todosMotoristas.find(m => m.nome.toLowerCase() === perfilUsuario.nome.toLowerCase());
+        if (motoristaEncontrado) {
+            pedidosRua = pedidosRua.filter(p => p.motorista_id === motoristaEncontrado.id);
+        } else {
+            pedidosRua = []; // Se o perfil não corresponder a nenhum motorista cadastrado na frota
+        }
+    }
 
     if (pedidosRua.length === 0) {
-        listaEntregador.innerHTML = `<div class="p-6 text-center text-gray-500 bg-gray-50 rounded-lg">Nenhuma entrega agendada para esta data.</div>`;
+        listaEntregador.innerHTML = `<div class="p-6 text-center text-gray-500 bg-gray-50 rounded-lg">Nenhuma entrega agendada para esta data ou atribuída a si.</div>`;
         return;
     }
 
@@ -375,7 +423,7 @@ function renderizarPainelEntregador(pedidos) {
 
         const linkMaps = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(endereco + bairro)}`;
         const linkWaze = `https://waze.com/ul?q=${encodeURIComponent(endereco + bairro)}&navigate=yes`;
-        const linkWhats = telefone ? `https://wa.me/55${telefone}?text=${encodeURIComponent(`Olá ${nome}, seu pedido está a caminho! 🛵💨`)}` : '#';
+        const linkWhats = telefone ? `https://wa.me/55${telefone}?text=${encodeURIComponent(`Olá ${nome}, o seu pedido está a caminho! 🛵💨`)}` : '#';
 
         const card = document.createElement('div');
         card.className = `p-4 rounded-lg border shadow-sm ${isEntregue ? 'bg-green-50 border-green-200 opacity-75' : 'bg-white border-gray-200'}`;
@@ -385,7 +433,7 @@ function renderizarPainelEntregador(pedidos) {
                     <h3 class="font-bold text-lg text-gray-800">${nome}</h3>
                     <p class="text-sm text-gray-600">📍 ${endereco}${bairro}</p>
                 </div>
-                <span class="px-2 py-1 text-xs font-semibold rounded-full ${isEntregue ? 'bg-green-200 text-green-900' : 'bg-yellow-100 text-yellow-800'}">${p.status}</span>
+                <span class="px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">${p.status}</span>
             </div>
             <div class="mb-3 text-sm text-gray-700">
                 <p><strong>📦 Pedido:</strong> ${p.descricao_pedido}</p>
@@ -396,8 +444,9 @@ function renderizarPainelEntregador(pedidos) {
                 <a href="${linkMaps}" target="_blank" class="bg-blue-600 text-white px-3 py-2 rounded text-xs font-medium hover:bg-blue-700">🗺️ Google Maps</a>
                 <a href="${linkWaze}" target="_blank" class="bg-sky-500 text-white px-3 py-2 rounded text-xs font-medium hover:bg-sky-600">🚗 Waze</a>
                 ${telefone ? `<a href="${linkWhats}" target="_blank" class="bg-emerald-600 text-white px-3 py-2 rounded text-xs font-medium hover:bg-emerald-700">💬 WhatsApp</a>` : ''}
-                <div class="ml-auto">
-                    ${!isEntregue ? `<button onclick="marcarComoEntregue(${p.id})" class="bg-green-600 text-white px-4 py-2 rounded text-xs font-bold hover:bg-green-700">✅ Concluir</button>` : `<span class="text-green-700 font-semibold text-xs">Entregue!</span>`}
+                <div class="ml-auto flex gap-2">
+                    <button onclick="atualizarStatusPedido(${p.id}, 'Em Rota')" class="bg-purple-600 text-white px-3 py-2 rounded text-xs font-bold hover:bg-purple-700">🚀 Em Rota</button>
+                    <button onclick="atualizarStatusPedido(${p.id}, 'Entregue')" class="bg-green-600 text-white px-3 py-2 rounded text-xs font-bold hover:bg-green-700">✅ Concluir</button>
                 </div>
             </div>
         `;
@@ -413,7 +462,7 @@ function atualizarRelatoriosBI(pedidos) {
 
     const totalMes = pedidosMes.length;
     const concluidasMes = pedidosMes.filter(p => p.status === 'Entregue').length;
-    const pendentesMes = pedidosMes.filter(p => p.status === 'Pendente').length;
+    const pendentesMes = pedidosMes.filter(p => p.status !== 'Entregue').length;
     const faturamentoMes = pedidosMes.reduce((acc, p) => acc + Number(p.valor), 0);
     const ticketMedio = totalMes > 0 ? faturamentoMes / totalMes : 0;
     const taxaConclusao = totalMes > 0 ? (concluidasMes / totalMes) * 100 : 0;
@@ -426,7 +475,7 @@ function atualizarRelatoriosBI(pedidos) {
     if (chartStatusInstance) chartStatusInstance.destroy();
     chartStatusInstance = new Chart(ctxStatus, {
         type: 'doughnut',
-        data: { labels: ['Concluídas', 'Pendentes'], datasets: [{ data: [concluidasMes, pendentesMes], backgroundColor: ['#10B981', '#F59E0B'] }] },
+        data: { labels: ['Concluídas', 'Outros/Pendentes'], datasets: [{ data: [concluidasMes, pendentesMes], backgroundColor: ['#10B981', '#F59E0B'] }] },
         options: { responsive: true, maintainAspectRatio: false }
     });
 
@@ -467,14 +516,38 @@ function atualizarRelatoriosBI(pedidos) {
     });
 }
 
-// ================= AÇÕES & EVENTOS =================
+// Exportação CSV otimizada para Power BI / Excel
+window.exportarParaCSV = function() {
+    const mesSelecionado = filtroMesRelatorio.value;
+    const pedidosMes = todosPedidos.filter(p => p.data_entrega && p.data_entrega.startsWith(mesSelecionado));
 
-window.marcarComoEntregue = async function(id) {
-    try {
-        await supabaseClient.from('pedidos').update({ status: 'Entregue' }).eq('id', id);
-        carregarPedidos();
-    } catch (err) { alert('Erro: ' + err.message); }
+    if (pedidosMes.length === 0) {
+        alert('Não há dados no mês selecionado para exportar.');
+        return;
+    }
+
+    let csvContent = "data:text/csv;charset=utf-8,ID;Cliente;Bairro;Endereco;Motorista;Valor;Data;Status\r\n";
+    
+    pedidosMes.forEach(p => {
+        const cliente = p.clientes ? p.clientes.nome : 'Sem Cliente';
+        const bairro = p.clientes && p.clientes.bairro ? p.clientes.bairro : 'Sem Bairro';
+        const endereco = p.clientes ? p.clientes.endereco : 'Sem Endereço';
+        const motorista = p.motoristas ? p.motoristas.nome : 'Sem Motorista';
+        const valor = Number(p.valor).toFixed(2).replace('.', ',');
+        
+        csvContent += `${p.id};"${cliente}";"${bairro}";"${endereco}";"${motorista}";${valor};${p.data_entrega};${p.status}\r\n`;
+    });
+
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `relatorio_logistica_${mesSelecionado}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
 };
+
+// ================= AÇÕES & EVENTOS =================
 
 window.excluirPedido = async function(id) {
     if (!confirm('Excluir pedido?')) return;
@@ -486,7 +559,7 @@ window.excluirPedido = async function(id) {
 
 function atualizarDashboard(pedidos) {
     document.getElementById('stat-total').textContent = pedidos.length;
-    document.getElementById('stat-pendentes').textContent = pedidos.filter(p => p.status === 'Pendente').length;
+    document.getElementById('stat-pendentes').textContent = pedidos.filter(p => p.status !== 'Entregue').length;
     document.getElementById('stat-concluidas').textContent = pedidos.filter(p => p.status === 'Entregue').length;
     document.getElementById('stat-faturamento').textContent = `R$ ${pedidos.reduce((acc, p) => acc + Number(p.valor), 0).toFixed(2)}`;
 }
