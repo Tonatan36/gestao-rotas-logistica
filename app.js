@@ -332,14 +332,12 @@ function renderizarTabelaPedidos(pedidos) {
         const enderecoCliente = p.clientes ? p.clientes.endereco : '-';
         const motoristaAtualId = p.motorista_id || '';
 
-        // Seletor rápido de motorista diretamente na tabela
         let optionsMotoristas = `<option value="">(Livre / Sem Atribuição)</option>`;
         todosMotoristas.forEach(m => {
             const selected = m.id == motoristaAtualId ? 'selected' : '';
             optionsMotoristas += `<option value="${m.id}" ${selected}>${m.nome}</option>`;
         });
 
-        // Cores e rótulos de status avançados
         let statusBadge = '';
         if (p.status === 'Pendente') statusBadge = 'bg-yellow-100 text-yellow-800';
         else if (p.status === 'Em Separação') statusBadge = 'bg-blue-100 text-blue-800';
@@ -398,18 +396,17 @@ function renderizarPainelEntregador(pedidos) {
     
     let pedidosRua = pedidos.filter(p => dataSelecionada ? p.data_entrega === dataSelecionada : true);
 
-    // Se o usuário logado for um motorista, filtra apenas os pedidos dele
     if (perfilUsuario && perfilUsuario.cargo === 'motorista') {
-        const motoristaEncontrado = todosMotoristas.find(m => m.nome.toLowerCase() === perfilUsuario.nome.toLowerCase());
-        if (motoristaEncontrado) {
-            pedidosRua = pedidosRua.filter(p => p.motorista_id === motoristaEncontrado.id);
-        } else {
-            pedidosRua = []; // Se o perfil não corresponder a nenhum motorista cadastrado na frota
-        }
+        const nomeLogado = perfilUsuario.nome.trim().toLowerCase();
+        pedidosRua = pedidosRua.filter(p => {
+            if (!p.motoristas || !p.motoristas.nome) return false;
+            const nomePedidoMoto = p.motoristas.nome.trim().toLowerCase();
+            return nomePedidoMoto.includes(nomeLogado) || nomeLogado.includes(nomePedidoMoto);
+        });
     }
 
     if (pedidosRua.length === 0) {
-        listaEntregador.innerHTML = `<div class="p-6 text-center text-gray-500 bg-gray-50 rounded-lg">Nenhuma entrega agendada para esta data ou atribuída a si.</div>`;
+        listaEntregador.innerHTML = `<div class="p-6 text-center text-gray-500 bg-gray-50 rounded-lg">Nenhuma entrega agendada para esta data ou atribuída a si (${perfilUsuario ? perfilUsuario.nome : ''}).</div>`;
         return;
     }
 
@@ -516,7 +513,6 @@ function atualizarRelatoriosBI(pedidos) {
     });
 }
 
-// Exportação CSV otimizada para Power BI / Excel
 window.exportarParaCSV = function() {
     const mesSelecionado = filtroMesRelatorio.value;
     const pedidosMes = todosPedidos.filter(p => p.data_entrega && p.data_entrega.startsWith(mesSelecionado));
