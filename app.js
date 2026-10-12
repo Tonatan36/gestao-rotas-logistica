@@ -32,6 +32,7 @@ let todosClientes = [];
 let todosMotoristas = [];
 let usuarioLogado = null;
 let perfilUsuario = null;
+let motoristaIdLogado = null; // Variável para guardar o ID do motorista logado
 let chartStatusInstance = null;
 let chartFaturamentoInstance = null;
 
@@ -83,8 +84,21 @@ async function carregarPerfilEVerificarSessao() {
         const nomeEmpresa = perfil.empresas ? perfil.empresas.nome_empresa : 'Empresa';
         infoUsuario.textContent = `Empresa: ${nomeEmpresa} | Logado como: ${perfil.nome} (${perfil.cargo})`;
 
+        // Se for motorista, procuramos o ID dele na tabela motoristas pelo nome exato
         if (perfil.cargo === 'motorista') {
             document.getElementById('menu-abas').classList.add('hidden');
+            
+            const { data: mData } = await supabaseClient
+                .from('motoristas')
+                .select('id')
+                .ilike('nome', perfil.nome.trim())
+                .single();
+                
+            if (mData) {
+                motoristaIdLogado = mData.id;
+            }
+            
+            carregarMotoristasParaFundo();
             mudarAba('entregador');
         } else {
             carregarClientes();
@@ -127,7 +141,7 @@ window.mudarAba = function(aba) {
     } else if (aba === 'entregador' && divEntregador) {
         divEntregador.classList.remove('hidden');
         if (btnEntregador) btnEntregador.className = "bg-orange-600 text-white px-5 py-2 rounded-lg font-semibold shadow transition";
-        renderizarPainelEntregador(todosPedidos);
+        carregarPedidos(); // Garante que busca os pedidos atualizados para o entregador
     } else if (aba === 'relatorios' && divRelatorios) {
         divRelatorios.classList.remove('hidden');
         if (btnRelatorios) btnRelatorios.className = "bg-purple-600 text-white px-5 py-2 rounded-lg font-semibold shadow transition";
@@ -230,35 +244,58 @@ window.excluirCliente = async function(id) {
 
 async function carregarMotoristas() {
     try {
-        const { data, error } = await supabaseClient.from('motoristas').select('*').order('id', { ascending: false });
+        const { data, error } = await supabaseClient
+            .from('motoristas')
+            .select('*')
+            .eq('empresa_id', 'dcfdb872-13d5-4135-8eb3-9147271bde72')
+            .order('id', { ascending: false });
+
         if (error) throw error;
         todosMotoristas = data || [];
-        tabelaMotoristas.innerHTML = '';
-        selectMotorista.innerHTML = '<option value="">Nenhum / Atribuição livre</option>';
+        if (tabelaMotoristas) {
+            tabelaMotoristas.innerHTML = '';
+        }
+        if (selectMotorista) {
+            selectMotorista.innerHTML = '<option value="">Nenhum / Atribuição livre</option>';
+        }
 
         if (todosMotoristas.length === 0) {
-            tabelaMotoristas.innerHTML = `<tr><td colspan="4" class="px-4 py-3 text-center text-gray-500">Nenhum motorista cadastrado.</td></tr>`;
+            if (tabelaMotoristas) tabelaMotoristas.innerHTML = `<tr><td colspan="4" class="px-4 py-3 text-center text-gray-500">Nenhum motorista cadastrado.</td></tr>`;
             return;
         }
 
         todosMotoristas.forEach(m => {
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td class="px-4 py-2 font-medium text-gray-900">${m.nome}</td>
-                <td class="px-4 py-2 text-gray-500">${m.telefone || '-'}</td>
-                <td class="px-4 py-2 text-gray-500">${m.veiculo || '-'}</td>
-                <td class="px-4 py-2">
-                    <button onclick="excluirMotorista(${m.id})" class="bg-red-500 text-white px-2 py-1 rounded text-xs hover:bg-red-600">🗑️</button>
-                </td>
-            `;
-            tabelaMotoristas.appendChild(tr);
+            if (tabelaMotoristas) {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td class="px-4 py-2 font-medium text-gray-900">${m.nome}</td>
+                    <td class="px-4 py-2 text-gray-500">${m.telefone || '-'}</td>
+                    <td class="px-4 py-2 text-gray-500">${m.veiculo || '-'}</td>
+                    <td class="px-4 py-2">
+                        <button onclick="excluirMotorista(${m.id})" class="bg-red-500 text-white px-2 py-1 rounded text-xs hover:bg-red-600">🗑️</button>
+                    </td>
+                `;
+                tabelaMotoristas.appendChild(tr);
+            }
 
-            const opt = document.createElement('option');
-            opt.value = m.id;
-            opt.textContent = `${m.nome} (${m.veiculo || 'Moto/Carro'})`;
-            selectMotorista.appendChild(opt);
+            if (selectMotorista) {
+                const opt = document.createElement('option');
+                opt.value = m.id;
+                opt.textContent = `${m.nome} (${m.veiculo || 'Moto/Carro'})`;
+                selectMotorista.appendChild(opt);
+            }
         });
     } catch (err) { console.error("Erro motoristas:", err); }
+}
+
+async function carregarMotoristasParaFundo() {
+    try {
+        const { data } = await supabaseClient
+            .from('motoristas')
+            .select('*')
+            .eq('empresa_id', 'dcfdb872-13d5-4135-8eb3-9147271bde72');
+        todosMotoristas = data || [];
+    } catch (err) { console.error("Erro motoristas fundo:", err); }
 }
 
 formMotorista.addEventListener('submit', async (e) => {
@@ -298,7 +335,7 @@ async function carregarPedidos() {
         if (error) throw error;
         todosPedidos = data || [];
         atualizarDashboard(todosPedidos);
-        renderizarTabelaPedidos(todosPedidos);
+        if (tabelaPedidos) renderizarTabelaPedidos(todosPedidos);
         renderizarPainelEntregador(todosPedidos);
 
         const abaRelatorios = document.getElementById('aba-relatorios');
@@ -309,6 +346,7 @@ async function carregarPedidos() {
 }
 
 function renderizarTabelaPedidos(pedidos) {
+    if (!tabelaPedidos) return;
     tabelaPedidos.innerHTML = '';
     const dataFiltro = filtroData.value;
     const termoBusca = inputBusca.value.toLowerCase();
@@ -396,13 +434,13 @@ function renderizarPainelEntregador(pedidos) {
     
     let pedidosRua = pedidos.filter(p => dataSelecionada ? p.data_entrega === dataSelecionada : true);
 
+    // Filtro rigoroso por ID do motorista logado
     if (perfilUsuario && perfilUsuario.cargo === 'motorista') {
-        const nomeLogado = perfilUsuario.nome.trim().toLowerCase();
-        pedidosRua = pedidosRua.filter(p => {
-            if (!p.motoristas || !p.motoristas.nome) return false;
-            const nomePedidoMoto = p.motoristas.nome.trim().toLowerCase();
-            return nomePedidoMoto.includes(nomeLogado) || nomeLogado.includes(nomePedidoMoto);
-        });
+        if (motoristaIdLogado) {
+            pedidosRua = pedidosRua.filter(p => p.motorista_id === motoristaIdLogado);
+        } else {
+            pedidosRua = [];
+        }
     }
 
     if (pedidosRua.length === 0) {
@@ -497,20 +535,22 @@ function atualizarRelatoriosBI(pedidos) {
     });
 
     const tabelaBairros = document.getElementById('tabela-bairros');
-    tabelaBairros.innerHTML = '';
-    const bairrosOrdenados = Object.keys(bairrosMap).sort((a, b) => bairrosMap[b].qtd - bairrosMap[a].qtd);
+    if (tabelaBairros) {
+        tabelaBairros.innerHTML = '';
+        const bairrosOrdenados = Object.keys(bairrosMap).sort((a, b) => bairrosMap[b].qtd - bairrosMap[a].qtd);
 
-    if (bairrosOrdenados.length === 0) {
-        tabelaBairros.innerHTML = `<tr><td colspan="3" class="px-4 py-3 text-center text-gray-500">Nenhum dado.</td></tr>`;
-        return;
+        if (bairrosOrdenados.length === 0) {
+            tabelaBairros.innerHTML = `<tr><td colspan="3" class="px-4 py-3 text-center text-gray-500">Nenhum dado.</td></tr>`;
+            return;
+        }
+
+        bairrosOrdenados.forEach(bairro => {
+            const d = bairrosMap[bairro];
+            const tr = document.createElement('tr');
+            tr.innerHTML = `<td class="px-4 py-2 font-medium text-gray-800">${bairro}</td><td class="px-4 py-2 text-gray-600">${d.qtd} entregas</td><td class="px-4 py-2 text-gray-600">R$ ${d.valor.toFixed(2)}</td>`;
+            tabelaBairros.appendChild(tr);
+        });
     }
-
-    bairrosOrdenados.forEach(bairro => {
-        const d = bairrosMap[bairro];
-        const tr = document.createElement('tr');
-        tr.innerHTML = `<td class="px-4 py-2 font-medium text-gray-800">${bairro}</td><td class="px-4 py-2 text-gray-600">${d.qtd} entregas</td><td class="px-4 py-2 text-gray-600">R$ ${d.valor.toFixed(2)}</td>`;
-        tabelaBairros.appendChild(tr);
-    });
 }
 
 window.exportarParaCSV = function() {
@@ -554,10 +594,15 @@ window.excluirPedido = async function(id) {
 };
 
 function atualizarDashboard(pedidos) {
-    document.getElementById('stat-total').textContent = pedidos.length;
-    document.getElementById('stat-pendentes').textContent = pedidos.filter(p => p.status !== 'Entregue').length;
-    document.getElementById('stat-concluidas').textContent = pedidos.filter(p => p.status === 'Entregue').length;
-    document.getElementById('stat-faturamento').textContent = `R$ ${pedidos.reduce((acc, p) => acc + Number(p.valor), 0).toFixed(2)}`;
+    const elTotal = document.getElementById('stat-total');
+    const elPendentes = document.getElementById('stat-pendentes');
+    const elConcluidas = document.getElementById('stat-concluidas');
+    const elFaturamento = document.getElementById('stat-faturamento');
+
+    if (elTotal) elTotal.textContent = pedidos.length;
+    if (elPendentes) elPendentes.textContent = pedidos.filter(p => p.status !== 'Entregue').length;
+    if (elConcluidas) elConcluidas.textContent = pedidos.filter(p => p.status === 'Entregue').length;
+    if (elFaturamento) elFaturamento.textContent = `R$ ${pedidos.reduce((acc, p) => acc + Number(p.valor), 0).toFixed(2)}`;
 }
 
 if (filtroData) filtroData.addEventListener('change', () => renderizarTabelaPedidos(todosPedidos));
