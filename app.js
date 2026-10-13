@@ -25,22 +25,28 @@ const filtroData = document.getElementById('filtro-data');
 const inputBusca = document.getElementById('input-busca');
 const filtroDataEntregador = document.getElementById('filtro-data-entregador');
 const listaEntregador = document.getElementById('lista-entregador');
-const filtroMesRelatorio = document.getElementById('filtro-mes-relatorio');
+
+// Novos elementos para os filtros de data personalizados no BI
+const filtroDataInicio = document.getElementById('filtro-data-inicio');
+const filtroDataFim = document.getElementById('filtro-data-fim');
 
 let todosPedidos = [];
 let todosClientes = [];
 let todosMotoristas = [];
 let usuarioLogado = null;
 let perfilUsuario = null;
-let motoristaIdLogado = null; // Variável para guardar o ID do motorista logado
+let motoristaIdLogado = null;
 let chartStatusInstance = null;
 let chartFaturamentoInstance = null;
 
 const hojeISO = new Date().toISOString().split('T')[0];
-const mesAtualISO = hojeISO.substring(0, 7);
+
+// Inicialização de datas padrão para o BI (início e fim do mês atual)
+const primeiroDiaMes = hojeISO.substring(0, 8) + '01';
 if (filtroData) filtroData.value = '';
 if (filtroDataEntregador) filtroDataEntregador.value = hojeISO;
-if (filtroMesRelatorio) filtroMesRelatorio.value = mesAtualISO;
+if (filtroDataInicio) filtroDataInicio.value = primeiroDiaMes;
+if (filtroDataFim) filtroDataFim.value = hojeISO;
 
 // ================= AUTENTICAÇÃO & PERFIS =================
 
@@ -84,7 +90,6 @@ async function carregarPerfilEVerificarSessao() {
         const nomeEmpresa = perfil.empresas ? perfil.empresas.nome_empresa : 'Empresa';
         infoUsuario.textContent = `Empresa: ${nomeEmpresa} | Logado como: ${perfil.nome} (${perfil.cargo})`;
 
-        // Se for motorista, procuramos o ID dele na tabela motoristas pelo nome exato
         if (perfil.cargo === 'motorista') {
             document.getElementById('menu-abas').classList.add('hidden');
             
@@ -141,7 +146,7 @@ window.mudarAba = function(aba) {
     } else if (aba === 'entregador' && divEntregador) {
         divEntregador.classList.remove('hidden');
         if (btnEntregador) btnEntregador.className = "bg-orange-600 text-white px-5 py-2 rounded-lg font-semibold shadow transition";
-        carregarPedidos(); // Garante que busca os pedidos atualizados para o entregador
+        carregarPedidos();
     } else if (aba === 'relatorios' && divRelatorios) {
         divRelatorios.classList.remove('hidden');
         if (btnRelatorios) btnRelatorios.className = "bg-purple-600 text-white px-5 py-2 rounded-lg font-semibold shadow transition";
@@ -252,12 +257,8 @@ async function carregarMotoristas() {
 
         if (error) throw error;
         todosMotoristas = data || [];
-        if (tabelaMotoristas) {
-            tabelaMotoristas.innerHTML = '';
-        }
-        if (selectMotorista) {
-            selectMotorista.innerHTML = '<option value="">Nenhum / Atribuição livre</option>';
-        }
+        if (tabelaMotoristas) tabelaMotoristas.innerHTML = '';
+        if (selectMotorista) selectMotorista.innerHTML = '<option value="">Nenhum / Atribuição livre</option>';
 
         if (todosMotoristas.length === 0) {
             if (tabelaMotoristas) tabelaMotoristas.innerHTML = `<tr><td colspan="4" class="px-4 py-3 text-center text-gray-500">Nenhum motorista cadastrado.</td></tr>`;
@@ -370,6 +371,9 @@ function renderizarTabelaPedidos(pedidos) {
         const enderecoCliente = p.clientes ? p.clientes.endereco : '-';
         const motoristaAtualId = p.motorista_id || '';
 
+        // MELHORIA 3: Detecção de Atraso (Data de entrega < hoje e não entregue/cancelado)
+        const isAtrasado = p.data_entrega < hojeISO && p.status !== 'Entregue' && p.status !== 'Cancelado';
+
         let optionsMotoristas = `<option value="">(Livre / Sem Atribuição)</option>`;
         todosMotoristas.forEach(m => {
             const selected = m.id == motoristaAtualId ? 'selected' : '';
@@ -384,8 +388,13 @@ function renderizarTabelaPedidos(pedidos) {
         else statusBadge = 'bg-red-100 text-red-800';
 
         const linha = document.createElement('tr');
+        // Aplica destaque visual vermelho suave se estiver atrasado
+        linha.className = isAtrasado ? 'bg-red-50 border-l-4 border-red-500' : '';
+
         linha.innerHTML = `
-            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${nomeCliente}</td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                ${nomeCliente} ${isAtrasado ? '<span class="text-xs bg-red-600 text-white px-1.5 py-0.5 rounded ml-1 font-bold">ATRASADO</span>' : ''}
+            </td>
             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${enderecoCliente}</td>
             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${p.descricao_pedido}</td>
             <td class="px-6 py-4 whitespace-nowrap text-sm">
@@ -434,7 +443,6 @@ function renderizarPainelEntregador(pedidos) {
     
     let pedidosRua = pedidos.filter(p => dataSelecionada ? p.data_entrega === dataSelecionada : true);
 
-    // Filtro rigoroso por ID do motorista logado
     if (perfilUsuario && perfilUsuario.cargo === 'motorista') {
         if (motoristaIdLogado) {
             pedidosRua = pedidosRua.filter(p => p.motorista_id === motoristaIdLogado);
@@ -489,33 +497,43 @@ function renderizarPainelEntregador(pedidos) {
     });
 }
 
-// ================= RELATÓRIOS & BI =================
+// ================= RELATÓRIOS & BI (MELHORIAS 1 & 2) =================
 
 function atualizarRelatoriosBI(pedidos) {
-    const mesSelecionado = filtroMesRelatorio.value;
-    const pedidosMes = pedidos.filter(p => p.data_entrega && p.data_entrega.startsWith(mesSelecionado));
+    const dataInicio = filtroDataInicio ? filtroDataInicio.value : '';
+    const dataFim = filtroDataFim ? filtroDataFim.value : '';
 
-    const totalMes = pedidosMes.length;
-    const concluidasMes = pedidosMes.filter(p => p.status === 'Entregue').length;
-    const pendentesMes = pedidosMes.filter(p => p.status !== 'Entregue').length;
-    const faturamentoMes = pedidosMes.reduce((acc, p) => acc + Number(p.valor), 0);
-    const ticketMedio = totalMes > 0 ? faturamentoMes / totalMes : 0;
-    const taxaConclusao = totalMes > 0 ? (concluidasMes / totalMes) * 100 : 0;
+    // MELHORIA 1: Filtro flexível por intervalo de datas (Data Inicial e Data Final)
+    const pedidosFiltrados = pedidos.filter(p => {
+        if (!p.data_entrega) return false;
+        const matchInicio = dataInicio ? p.data_entrega >= dataInicio : true;
+        const matchFim = dataFim ? p.data_entrega <= dataFim : true;
+        return matchInicio && matchFim;
+    });
 
-    document.getElementById('rel-faturamento').textContent = `R$ ${faturamentoMes.toFixed(2)}`;
+    const totalPeriodo = pedidosFiltrados.length;
+    const concluidasPeriodo = pedidosFiltrados.filter(p => p.status === 'Entregue').length;
+    const pendentesPeriodo = pedidosFiltrados.filter(p => p.status !== 'Entregue').length;
+    const faturamentoPeriodo = pedidosFiltrados.reduce((acc, p) => acc + Number(p.valor), 0);
+    const ticketMedio = totalPeriodo > 0 ? faturamentoPeriodo / totalPeriodo : 0;
+    const taxaConclusao = totalPeriodo > 0 ? (concluidasPeriodo / totalPeriodo) * 100 : 0;
+
+    document.getElementById('rel-faturamento').textContent = `R$ ${faturamentoPeriodo.toFixed(2)}`;
     document.getElementById('rel-ticket').textContent = `R$ ${ticketMedio.toFixed(2)}`;
     document.getElementById('rel-taxa').textContent = `${taxaConclusao.toFixed(1)}%`;
 
+    // Gráfico de Status
     const ctxStatus = document.getElementById('graficoStatus').getContext('2d');
     if (chartStatusInstance) chartStatusInstance.destroy();
     chartStatusInstance = new Chart(ctxStatus, {
         type: 'doughnut',
-        data: { labels: ['Concluídas', 'Outros/Pendentes'], datasets: [{ data: [concluidasMes, pendentesMes], backgroundColor: ['#10B981', '#F59E0B'] }] },
+        data: { labels: ['Concluídas', 'Outros/Pendentes'], datasets: [{ data: [concluidasPeriodo, pendentesPeriodo], backgroundColor: ['#10B981', '#F59E0B'] }] },
         options: { responsive: true, maintainAspectRatio: false }
     });
 
+    // Gráfico de Faturamento por Dia
     const faturamentoPorDia = {};
-    pedidosMes.forEach(p => { faturamentoPorDia[p.data_entrega] = (faturamentoPorDia[p.data_entrega] || 0) + Number(p.valor); });
+    pedidosFiltrados.forEach(p => { faturamentoPorDia[p.data_entrega] = (faturamentoPorDia[p.data_entrega] || 0) + Number(p.valor); });
     const diasOrdenados = Object.keys(faturamentoPorDia).sort();
 
     const ctxFat = document.getElementById('graficoFaturamento').getContext('2d');
@@ -526,8 +544,9 @@ function atualizarRelatoriosBI(pedidos) {
         options: { responsive: true, maintainAspectRatio: false }
     });
 
+    // Tabela de Bairros
     const bairrosMap = {};
-    pedidosMes.forEach(p => {
+    pedidosFiltrados.forEach(p => {
         const bairro = p.clientes && p.clientes.bairro ? p.clientes.bairro : 'Não informado';
         if (!bairrosMap[bairro]) bairrosMap[bairro] = { qtd: 0, valor: 0 };
         bairrosMap[bairro].qtd += 1;
@@ -540,31 +559,103 @@ function atualizarRelatoriosBI(pedidos) {
         const bairrosOrdenados = Object.keys(bairrosMap).sort((a, b) => bairrosMap[b].qtd - bairrosMap[a].qtd);
 
         if (bairrosOrdenados.length === 0) {
-            tabelaBairros.innerHTML = `<tr><td colspan="3" class="px-4 py-3 text-center text-gray-500">Nenhum dado.</td></tr>`;
-            return;
+            tabelaBairros.innerHTML = `<tr><td colspan="3" class="px-4 py-3 text-center text-gray-500">Nenhum dado no período.</td></tr>`;
+        } else {
+            bairrosOrdenados.forEach(bairro => {
+                const d = bairrosMap[bairro];
+                const tr = document.createElement('tr');
+                tr.innerHTML = `<td class="px-4 py-2 font-medium text-gray-800">${bairro}</td><td class="px-4 py-2 text-gray-600">${d.qtd} entregas</td><td class="px-4 py-2 text-gray-600">R$ ${d.valor.toFixed(2)}</td>`;
+                tabelaBairros.appendChild(tr);
+            });
         }
-
-        bairrosOrdenados.forEach(bairro => {
-            const d = bairrosMap[bairro];
-            const tr = document.createElement('tr');
-            tr.innerHTML = `<td class="px-4 py-2 font-medium text-gray-800">${bairro}</td><td class="px-4 py-2 text-gray-600">${d.qtd} entregas</td><td class="px-4 py-2 text-gray-600">R$ ${d.valor.toFixed(2)}</td>`;
-            tabelaBairros.appendChild(tr);
-        });
     }
+
+    // MELHORIA 2: Tabela / Painel de Desempenho por Motorista
+    renderizarTabelaDesempenhoMotoristas(pedidosFiltrados);
+}
+
+function renderizarTabelaDesempenhoMotoristas(pedidosPeriodo) {
+    // Procura ou cria dinamicamente a tabela de motoristas no BI
+    let containerMotoristasBI = document.getElementById('tabela-desempenho-motoristas');
+    
+    // Se não existir no HTML atual, criamos logo abaixo da tabela de bairros para enriquecer o BI
+    if (!containerMotoristasBI) {
+        const secaoBairros = document.getElementById('tabela-bairros')?.closest('.bg-white');
+        if (secaoBairros && secaoBairros.parentNode) {
+            const cardMoto = document.createElement('div');
+            cardMoto.className = 'bg-white p-6 rounded-xl shadow-md mt-6';
+            cardMoto.innerHTML = `
+                <h3 class="text-lg font-bold text-gray-800 mb-4">🛵 Desempenho por Motorista (KPIs)</h3>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase">Motorista</th>
+                                <th class="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase">Entregas Concluídas</th>
+                                <th class="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase">Total Movimentado</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabela-desempenho-motoristas" class="divide-y divide-gray-200 text-sm"></tbody>
+                    </table>
+                </div>
+            `;
+            secaoBairros.parentNode.appendChild(cardMoto);
+            containerMotoristasBI = document.getElementById('tabela-desempenho-motoristas');
+        }
+    }
+
+    if (!containerMotoristasBI) return;
+    containerMotoristasBI.innerHTML = '';
+
+    const motoristasMap = {};
+    pedidosPeriodo.forEach(p => {
+        const nomeMoto = p.motoristas && p.motoristas.nome ? p.motoristas.nome : 'Sem Atribuição / Livre';
+        if (!motoristasMap[nomeMoto]) motoristasMap[nomeMoto] = { concluidas: 0, valorTotal: 0 };
+        
+        if (p.status === 'Entregue') {
+            motoristasMap[nomeMoto].concluidas += 1;
+        }
+        motoristasMap[nomeMoto].valorTotal += Number(p.valor);
+    });
+
+    const nomesOrdenados = Object.keys(motoristasMap).sort((a, b) => motoristasMap[b].concluidas - motoristasMap[a].concluidas);
+
+    if (nomesOrdenados.length === 0) {
+        containerMotoristasBI.innerHTML = `<tr><td colspan="3" class="px-4 py-3 text-center text-gray-500">Nenhum registo.</td></tr>`;
+        return;
+    }
+
+    nomesOrdenados.forEach(nome => {
+        const dados = motoristasMap[nome];
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td class="px-4 py-2 font-medium text-gray-800">${nome}</td>
+            <td class="px-4 py-2 text-gray-600">${dados.concluidas} entregas</td>
+            <td class="px-4 py-2 text-gray-600">R$ ${dados.valorTotal.toFixed(2)}</td>
+        `;
+        containerMotoristasBI.appendChild(tr);
+    });
 }
 
 window.exportarParaCSV = function() {
-    const mesSelecionado = filtroMesRelatorio.value;
-    const pedidosMes = todosPedidos.filter(p => p.data_entrega && p.data_entrega.startsWith(mesSelecionado));
+    const dataInicio = filtroDataInicio ? filtroDataInicio.value : '';
+    const dataFim = filtroDataFim ? filtroDataFim.value : '';
 
-    if (pedidosMes.length === 0) {
-        alert('Não há dados no mês selecionado para exportar.');
+    const pedidosPeriodo = todosPedidos.filter(p => {
+        if (!p.data_entrega) return false;
+        const matchInicio = dataInicio ? p.data_entrega >= dataInicio : true;
+        const matchFim = dataFim ? p.data_entrega <= dataFim : true;
+        return matchInicio && matchFim;
+    });
+
+    if (pedidosPeriodo.length === 0) {
+        alert('Não há dados no período selecionado para exportar.');
         return;
     }
 
     let csvContent = "data:text/csv;charset=utf-8,ID;Cliente;Bairro;Endereco;Motorista;Valor;Data;Status\r\n";
     
-    pedidosMes.forEach(p => {
+    pedidosPeriodo.forEach(p => {
         const cliente = p.clientes ? p.clientes.nome : 'Sem Cliente';
         const bairro = p.clientes && p.clientes.bairro ? p.clientes.bairro : 'Sem Bairro';
         const endereco = p.clientes ? p.clientes.endereco : 'Sem Endereço';
@@ -577,7 +668,7 @@ window.exportarParaCSV = function() {
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `relatorio_logistica_${mesSelecionado}.csv`);
+    link.setAttribute("download", `relatorio_logistica_${dataInicio}_a_${dataFim}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -608,7 +699,10 @@ function atualizarDashboard(pedidos) {
 if (filtroData) filtroData.addEventListener('change', () => renderizarTabelaPedidos(todosPedidos));
 if (inputBusca) inputBusca.addEventListener('input', () => renderizarTabelaPedidos(todosPedidos));
 if (filtroDataEntregador) filtroDataEntregador.addEventListener('change', () => renderizarPainelEntregador(todosPedidos));
-if (filtroMesRelatorio) filtroMesRelatorio.addEventListener('change', () => atualizarRelatoriosBI(todosPedidos));
+
+// Eventos para os novos filtros de data do BI
+if (filtroDataInicio) filtroDataInicio.addEventListener('change', () => atualizarRelatoriosBI(todosPedidos));
+if (filtroDataFim) filtroDataFim.addEventListener('change', () => atualizarRelatoriosBI(todosPedidos));
 
 if (formPedido) {
     formPedido.addEventListener('submit', async (e) => {
