@@ -3,58 +3,72 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cadastro de Empresa - SaaS de Logística & Rotas</title>
-    <!-- Tailwind CSS CDN -->
+    <title>Criar Conta - LogiSync Pro | Gestão Logística</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Supabase JS SDK -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="config.js"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+    </style>
 </head>
-<body class="bg-gray-100 text-gray-900 flex flex-col min-h-screen">
+<body class="bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-950 text-slate-100 flex flex-col min-h-screen">
 
-    <main class="flex-grow flex items-center justify-center p-4">
-        <div class="bg-white p-8 rounded-xl shadow-xl max-w-lg w-full border border-gray-100">
+    <main class="flex-grow flex items-center justify-center p-4 sm:p-6">
+        <div class="bg-white/95 backdrop-blur-xl text-slate-900 p-8 sm:p-10 rounded-3xl shadow-2xl max-w-md w-full border border-white/20 relative overflow-hidden">
+            
+            <div class="absolute -top-12 -right-12 w-32 h-32 bg-blue-500/10 rounded-full blur-2xl pointer-events-none"></div>
+
             <div class="text-center mb-6">
-                <h1 class="text-2xl font-bold text-blue-600">🚀 Criar Nova Conta SaaS</h1>
-                <p class="text-sm text-gray-500 mt-1">Configure o ambiente isolado da sua empresa</p>
+                <div class="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-blue-600 text-white shadow-lg shadow-blue-500/30 mb-3 text-2xl font-black">
+                    🚀
+                </div>
+                <h1 class="text-2xl font-extrabold text-slate-900 tracking-tight">Criar Nova Conta SaaS</h1>
+                <p class="text-xs text-slate-500 mt-1">Configure o ambiente isolado para sua empresa</p>
             </div>
 
             <form id="form-cadastro" class="space-y-4">
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Nome da Empresa / Comércio</label>
-                    <input type="text" id="cad-nome-empresa" required placeholder="Ex: Farmácia Popular JP" class="w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1">Nome da Empresa / Comércio</label>
+                    <input type="text" id="cad-nome-empresa" required placeholder="Ex: Distribuidora Silva ou Farmácia JP" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition">
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Nome do Gestor Responsável</label>
-                    <input type="text" id="cad-nome-gestor" required placeholder="Ex: Ewerton Natan" class="w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1">Nome do Gestor Responsável</label>
+                    <input type="text" id="cad-nome-gestor" required placeholder="Ex: Roberto Silva" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition">
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">E-mail de Acesso</label>
-                    <input type="email" id="cad-email" required placeholder="gestor@suaempresa.com" class="w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1">E-mail de Acesso</label>
+                    <input type="email" id="cad-email" required placeholder="gestor@suaempresa.com" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition">
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Palavra-passe (Senha)</label>
-                    <input type="password" id="cad-senha" required minlength="6" placeholder="Mínimo de 6 caracteres" class="w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1">Senha de Acesso</label>
+                    <input type="password" id="cad-senha" required minlength="6" placeholder="Mínimo 6 caracteres" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition">
                 </div>
                 <div class="pt-2">
-                    <button type="submit" id="btn-cadastrar" class="w-full bg-blue-600 text-white py-2.5 rounded-lg font-semibold hover:bg-blue-700 shadow-md transition">
-                        Registar Empresa e Iniciar
+                    <button type="submit" id="btn-cadastrar" class="w-full py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl font-bold text-sm hover:from-blue-700 hover:to-indigo-700 shadow-lg shadow-blue-500/25 transition flex items-center justify-center gap-2">
+                        <span>Registrar Empresa e Iniciar</span>
                     </button>
                 </div>
             </form>
 
-            <div id="mensagem-status" class="mt-4 text-center text-sm font-medium hidden p-3 rounded-lg"></div>
+            <div id="mensagem-status" class="mt-4 text-center text-xs font-semibold hidden p-3 rounded-xl border"></div>
 
-            <div class="mt-6 text-center text-sm text-gray-600 border-t pt-4">
-                Já possui uma conta ativa? <a href="index.html" class="text-blue-600 font-semibold hover:underline">Faça login aqui</a>
+            <div class="mt-6 text-center text-xs text-slate-500 border-t border-slate-100 pt-4">
+                Já possui uma conta ativa? <a href="index.html" class="text-blue-600 font-bold hover:underline">Faça login aqui</a>
             </div>
         </div>
     </main>
 
-    <script>
-        const SUPABASE_URL = 'https://haflwftqakcvcuuuswdp.supabase.co';
-        const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_rWoa2AQikbAN9USkLOW__Q_iwB8HDvZ';
-        const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+    <footer class="py-4 text-center text-xs text-slate-400">
+        LogiSync Pro © Todos os direitos reservados.
+    </footer>
 
+    <script>
         const formCadastro = document.getElementById('form-cadastro');
         const msgStatus = document.getElementById('mensagem-status');
         const btnCadastrar = document.getElementById('btn-cadastrar');
@@ -62,11 +76,10 @@
         formCadastro.addEventListener('submit', async (e) => {
             e.preventDefault();
             btnCadastrar.disabled = true;
-            btnCadastrar.textContent = "A processar registo...";
+            btnCadastrar.innerHTML = `<span class="inline-block animate-spin mr-2">🔄</span> Processando cadastro...`;
             
-            msgStatus.classList.remove('hidden', 'bg-red-50', 'text-red-700', 'bg-green-50', 'text-green-700');
-            msgStatus.classList.add('bg-blue-50', 'text-blue-700');
-            msgStatus.textContent = "Passo 1/3: A criar registo da empresa...";
+            msgStatus.className = 'mt-4 text-center text-xs font-semibold p-3 rounded-xl border bg-blue-50 border-blue-200 text-blue-700 block';
+            msgStatus.textContent = "Passo 1/3: Criando ambiente da empresa...";
 
             const nomeEmpresa = document.getElementById('cad-nome-empresa').value.trim();
             const nomeGestor = document.getElementById('cad-nome-gestor').value.trim();
@@ -84,7 +97,7 @@
                 if (empresaError) throw new Error("Erro ao criar empresa: " + empresaError.message);
                 const empresaId = empresaData.id;
 
-                msgStatus.textContent = "Passo 2/3: A criar credenciais de acesso...";
+                msgStatus.textContent = "Passo 2/3: Criando credenciais de acesso seguro...";
 
                 // 2. Cria o usuário no Auth
                 const { data: authData, error: authError } = await supabaseClient.auth.signUp({
@@ -92,12 +105,12 @@
                     password: senha
                 });
 
-                if (authError) throw new Error("Erro na autenticação: " + authError.message);
+                if (authError) throw new Error("Erro de autenticação: " + authError.message);
                 const userId = authData.user.id;
 
-                msgStatus.textContent = "Passo 3/3: A configurar perfil de gestor...";
+                msgStatus.textContent = "Passo 3/3: Vinculando perfil de gestor...";
 
-                // 3. Cria o perfil vinculado
+                // 3. Cria o perfil vinculado à empresa
                 const { error: perfilError } = await supabaseClient
                     .from('perfis')
                     .insert([{
@@ -109,21 +122,21 @@
 
                 if (perfilError) throw new Error("Erro ao criar perfil: " + perfilError.message);
 
-                msgStatus.classList.remove('bg-blue-50', 'text-blue-700');
-                msgStatus.classList.add('bg-green-50', 'text-green-700');
-                msgStatus.textContent = "✅ Conta criada com sucesso! Redirecionando...";
+                msgStatus.className = 'mt-4 text-center text-xs font-semibold p-3 rounded-xl border bg-emerald-50 border-emerald-200 text-emerald-700 block';
+                msgStatus.textContent = "✅ Conta criada com sucesso! Redirecionando para o login...";
+                showToast("Empresa registrada com sucesso!", "success");
 
                 setTimeout(() => {
                     window.location.href = 'index.html';
-                }, 2000);
+                }, 1800);
 
             } catch (err) {
                 console.error(err);
-                msgStatus.classList.remove('bg-blue-50', 'text-blue-700');
-                msgStatus.classList.add('bg-red-50', 'text-red-700');
+                msgStatus.className = 'mt-4 text-center text-xs font-semibold p-3 rounded-xl border bg-rose-50 border-rose-200 text-rose-700 block';
                 msgStatus.textContent = "❌ " + err.message;
+                showToast(err.message, "error");
                 btnCadastrar.disabled = false;
-                btnCadastrar.textContent = "Registar Empresa e Iniciar";
+                btnCadastrar.innerHTML = `<span>Registrar Empresa e Iniciar</span>`;
             }
         });
     </script>
